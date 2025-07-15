@@ -19,6 +19,7 @@ Proyek ini merupakan sistem absensi otomatis dan monitoring makan atau minum ber
 🍽️ Pencatatan data pelanggaran makanan/minuman saat di area kerja 
 ⏱️ Pencatatan presensi secara otomatis berdasarkan waktu terdeteksi dan kamera role in dan out
 ⏱️ Pencatatan lama kerja secara otomatis berdasarkan waktu terdeteksi
+📥 Impor data pegawai dari file Excel (.xlsx) untuk mempercepat input data pegawai secara massal
 
 
 🧩 Library
@@ -42,11 +43,11 @@ Proyek ini merupakan sistem absensi otomatis dan monitoring makan atau minum ber
 1. Clone repo:
 
 bash
-git clone https://github.com/namamu/flask-face-attendance.git
-cd flask-face-attendance
+git clone https://github.com/anggayn/absensidanmonitoring.git
+cd absensidanmonitoring
 
 
-2. Buat virtual environment (opsional tapi disarankan):
+2. Buat virtual environment:
 
 bash
 python -m venv venv
