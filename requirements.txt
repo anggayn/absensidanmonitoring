@@ -1,0 +1,12 @@
+flask
+flask_sqlalchemy
+flask_migrate
+sqlalchemy
+werkzeug
+pandas
+pygame
+opencv-python
+numpy
+ultralytics
+requests
+fpdf
