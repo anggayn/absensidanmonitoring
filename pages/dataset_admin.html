@@ -1,0 +1,864 @@
+<!doctype html>
+<!--
+* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
+* @version 1.0.0-alpha.7
+* @link https://github.com/tabler/tabler
+* Copyright 2018-2019 The Tabler Authors
+* Copyright 2018-2019 codecalm.net Paweł Kuna
+* Licensed under MIT (https://tabler.io/license)
+-->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Template</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+  <meta name="msapplication-TileColor" content="#206bc4" />
+  <meta name="theme-color" content="#206bc4" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="MobileOptimized" content="320" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+  <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon" />
+  <!-- CSS files -->
+  <link href="../static/dist/libs/jqvmap/dist/jqvmap.min.css" rel="stylesheet" />
+  <link href="../static/dist/libs/flatpickr/dist/flatpickr.min.css" rel="stylesheet" />
+  <link href="../static/dist/css/tabler.min.css" rel="stylesheet" />
+  <link href="../static/dist/css/demo.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    body {
+      display: none;
+    }
+
+    .folder-card {
+      transition: transform 0.2s;
+    }
+
+    .folder-card:hover {
+      transform: scale(1.03);
+    }
+
+    .folder-icon {
+      font-size: 3rem;
+      color: #ffd700;
+    }
+
+    #folder-container {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .folder-card {
+      transition: transform 0.2s;
+    }
+
+    .folder-card:hover {
+      transform: scale(1.03);
+    }
+
+    .folder-item .card:hover {
+      transform: scale(1.02);
+      transition: 0.2s;
+    }
+
+    .form-control-sm {
+      min-width: 200px;
+    }
+
+    .btn-space {
+      margin-right: 0.75rem;
+    }
+
+    .modal-custom-width {
+      max-width: 1100px;
+      /* Sedikit lebih lebar dari modal-lg (~800px) */
+    }
+
+    .modal-dialog {
+      margin-top: 80px !important;
+    }
+
+    .tools-section {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .tool-button {
+      margin: 0 5px;
+      padding: 10px 40px;
+      border-radius: 5px;
+      color: white;
+      text-align: center;
+      transition: background-color 0.3s ease;
+      font-size: 16px;
+    }
+
+    .tool-button a {
+      color: white;
+      text-decoration: none;
+      display: block;
+    }
+
+    .btn-roboflow {
+      background-color: #3b82f6;
+    }
+
+    .btn-roboflow:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-colab {
+      background-color: #1bd6bd;
+    }
+
+    .btn-colab:hover {
+      background-color: #18bba5;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .col-md-6 {
+      flex: 0 0 50%;
+      padding: 40px;
+    }
+
+    h4,
+    h5 {
+      margin-bottom: 20px;
+    }
+
+    .numbered-list {
+      padding-left: 20px;
+    }
+
+    .numbered-list li {
+      margin-bottom: 5px;
+    }
+
+    .box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 40px;
+      background-color: #f9f9f9;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+  <div class="page">
+    <header class="navbar navbar-expand-md navbar-light">
+      <div class="container-xl">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <a href="." class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3">
+          <img src="../static/logo.png" alt="Tabler" class="navbar-brand-image">
+        </a>
+        <div class="navbar-nav flex-row order-md-last">
+          <div class="nav-item dropdown">
+            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-toggle="dropdown">
+              {% set avatar_url = url_for('static', filename='uploads/' ~ user.photo) if user and user.photo else
+              url_for('static', filename='avatars/005f.jpg') %}
+              <span class="avatar" style="background-image: url('{{ avatar_url }}')"></span>
+              <div class="d-none d-xl-block pl-2">
+                <div>{{ username }}</div>
+                <div class="mt-1 small text-muted">{{ role }}</div>
+              </div>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right">
+              <a class="dropdown-item" href="{{ url_for('profile') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+                  viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                  <path d="M5.5 21v-2a4 4 0 0 1 4 -4h5a4 4 0 0 1 4 4v2"></path>
+                </svg>
+                Profile
+              </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="{{ url_for('logout') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+                  viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z"></path>
+                  <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"></path>
+                  <path d="M7 12h14l-3 -3m0 6l3 -3"></path>
+                </svg>
+                Logout
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="navbar-expand-md">
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <div class="navbar navbar-light">
+          <div class="container-xl">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                      stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" />
+                      <polyline points="5 12 3 12 12 3 21 12 19 12" />
+                      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+                      <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                    </svg>
+                  </span>
+                  <span class="nav-link-title">
+                    Dashboard
+                  </span>
+                </a>
+              </li>
+              <li class="nav-item dropdown ">
+                <a class="nav-link dropdown-toggle" href="#navbar-extra2" data-toggle="dropdown" role="button"
+                  aria-expanded="false">
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-md" width="24" height="24"
+                      viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z"></path>
+                      <polyline points="14 3 14 8 19 8"></polyline>
+                      <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path>
+                      <line x1="9" y1="9" x2="10" y2="9"></line>
+                      <line x1="9" y1="13" x2="15" y2="13"></line>
+                      <line x1="9" y1="17" x2="15" y2="17"></line>
+                    </svg>
+                  </span>
+                  <span class="nav-link-title">
+                    Presensi
+                  </span>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin_kamera_presensi_realtime') }}">
+                      Kamera Realtime
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin_kamera_presensi') }}">
+                      Report Presensi
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#navbar-extra2" data-toggle="dropdown" role="button"
+                  aria-expanded="false">
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-md" width="24" height="24"
+                      viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z"></path>
+                      <rect x="3" y="4" width="18" height="12" rx="1"></rect>
+                      <line x1="7" y1="20" x2="17" y2="20"></line>
+                      <line x1="9" y1="16" x2="9" y2="20"></line>
+                      <line x1="15" y1="16" x2="15" y2="20"></line>
+                    </svg>
+                  </span>
+                  <span class="nav-link-title">
+                    Lama Kerja
+                  </span>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin_kamera_pelacakan_realtime') }}">
+                      Kamera Realtime
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin_lama_kerja') }}">
+                      Report Lama Kerja
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#navbar-extra2" data-toggle="dropdown" role="button"
+                  aria-expanded="false">
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-md" width="24" height="24"
+                      viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z"></path>
+                      <path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"></path>
+                      <line x1="14.5" y1="5.5" x2="18.5" y2="9.5"></line>
+                      <polyline points="12 8 7 3 3 7 8 12"></polyline>
+                      <line x1="7" y1="8" x2="5.5" y2="9.5"></line>
+                      <polyline points="16 12 21 17 17 21 12 16"></polyline>
+                      <line x1="16" y1="17" x2="14.5" y2="18.5"></line>
+                    </svg>
+                  </span>
+                  <span class="nav-link-title">
+                    Konfigurasi CCTV
+                  </span>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a href="{{ url_for('divisi_kamera_presensi') }}" class="dropdown-item">Konfigurasi presensi</a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('divisi_kamera_pelacakan') }}" class="dropdown-item">Konfigurasi Lama kerja</a>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item dropdown active">
+                <a class="nav-link dropdown-toggle" href="#navbar-extra2" data-toggle="dropdown" role="button"
+                  aria-expanded="false">
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-md" width="24" height="24"
+                      viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z"></path>
+                      <ellipse cx="12" cy="6" rx="8" ry="3"></ellipse>
+                      <path d="M4 6v6a8 3 0 0 0 16 0v-6"></path>
+                      <path d="M4 12v6a8 3 0 0 0 16 0v-6"></path>
+                    </svg>
+                  </span>
+                  <span class="nav-link-title">
+                    Database
+                  </span>
+                </a>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a href="{{ url_for('divisi_divisi') }}" class="dropdown-item">Data Divisi</a>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('divisi_pegawai') }}" class="dropdown-item">Data Pegawai</a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('dataset_admin') }}" class="dropdown-item">Dataset Instansi</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="container-xl">
+        <!-- Page title -->
+        <div class="page-header mb-4">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Dataset Instansi</h2>
+            </div>
+            <div class="col-auto ml-auto d-print-none">
+              
+              {# Kalau ada salah satu model yang BELUM diupload, tampilkan tombol Upload #}
+              {% if not admin.model_path or not admin.model_makanminum %}
+                <button class="btn btn-primary" data-toggle="modal" data-target="#modal-upload">
+                  Upload Model
+                </button>
+
+              {# Kalau KEDUANYA sudah diupload, tampilkan tombol Edit & Delete #}
+              {% else %}
+                <button class="btn btn-warning mr-2" data-toggle="modal" data-target="#modal-edit">
+                  Edit Model
+                </button>
+                <button class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
+                  Delete Model
+                </button>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Info Card -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                {% if admin.model_path %}
+                <p><strong>Model Presensi (Orang):</strong> {{ admin.model_path }}</p>
+                {% else %}
+                <p class="text-muted">Belum ada model presensi yang diupload.</p>
+                {% endif %}
+
+                {% if admin.model_makanminum %}
+                <p><strong>Model Pelanggaran (Makan/Minum):</strong> {{ admin.model_makanminum }}</p>
+                {% else %}
+                <p class="text-muted">Belum ada model pelanggaran yang diupload.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload Modal -->
+        <div class="modal fade" id="modal-upload" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('dataset_admin') }}">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Upload Model (.pt)</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span>&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <input type="hidden" name="action" value="upload">
+
+                  <!-- Tambahkan pemilihan jenis model -->
+                  <div class="form-group">
+                    <label for="model_type">Jenis Model</label>
+                    <select name="model_type" class="form-control" required>
+                      <option value="presensi">Model Presensi (Orang)</option>
+                      <option value="pelanggaran">Model Pelanggaran (Makan/Minum)</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="model_file">Model File (.pt)</label>
+                    <input type="file" class="form-control" name="model_file" accept=".pt" required>
+                  </div>
+                </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                  </div>
+              </div>
+            </form>
+
+          </div>
+        </div>
+
+        <!-- Edit Modal -->
+<div class="modal fade" id="modal-edit" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('dataset_admin') }}">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Model (.pt)</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="action" value="edit">
+
+          <!-- Pilih jenis model -->
+          <div class="form-group">
+            <label for="model_type_edit">Jenis Model</label>
+            <select name="model_type" class="form-control" required>
+              <option value="presensi">Model Presensi (Orang)</option>
+              <option value="pelanggaran">Model Pelanggaran (Makan/Minum)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="model_file_edit">New Model File (.pt)</label>
+            <input type="file" class="form-control" name="model_file" accept=".pt" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-warning">Save Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+        
+        <div class="container mt-3 mb-2">
+          <div class="card shadow">
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+              <h3 class="card-title m-0">Daftar Folder Pegawai</h3>
+              <div class="d-flex align-items-center ms-auto mt-2 mt-md-0">
+                <input type="text" class="form-control" id="search-folder" placeholder="Search folders..."
+                  style="min-width: 300px; margin-right: 10px; font-size: 1rem; padding: 0.5rem 1rem; height: 20px;" />
+                <button class="btn btn-danger px-3 py-0 rounded-1 d-inline-flex align-items-center"
+                  onclick="deleteAll()" style="margin-left: 10px; font-size: 0.75rem; height: 36px;">
+                  <i class="bi bi-trash-fill" style="font-size: 16px; margin-right: 6px;"></i>
+                  Delete All
+                </button>
+              </div>
+            </div>
+            <div class="card-body p-3">
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3" id="folder-container">
+                <!-- Folder cards will be injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Modal Lihat Foto -->
+        <div class="modal fade" id="modalLihatFoto" tabindex="-1" aria-labelledby="modalLihatFotoLabel"
+          aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-custom-width">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalLihatFotoLabel">Foto Pegawai</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body overflow-auto" style="max-height: 75vh;">
+                <div class="row g-2" id="foto-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tools-section">
+          <h4 class="text-center">Tools</h4>
+          <div class="d-flex justify-content-center">
+            <div class="tool-button btn-roboflow">
+              <a href="https://roboflow.com/" target="_blank">
+                <img src="/static/images/logoroboflow.png" alt="Roboflow Icon" style="width: 30px; height: 30px;"><br>
+                Create Dataset
+              </a>
+            </div>
+            <div class="tool-button btn-colab">
+              <a href="https://colab.research.google.com/github/ultralytics/ultralytics/blob/main/examples/tutorial.ipynb"
+                target="_blank">
+                <img src="/static/images/logocolab.png" alt="Colab Icon" style="width: 40px; height: 40px;"><br>
+                Train Dataset
+              </a>
+            </div>
+          </div>
+          <p class="text-center mt-3" style="font-size: 14px; color: #666;">
+            Gunakan tombol button di atas untuk membuat dan melatih kumpulan data Anda dengan mudah.
+          </p>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="box">
+                <h4 class="text-center mt-3">Tutorial Membuat Dataset</h4>
+                <p>Berikut adalah langkah-langkah untuk membuat dataset:</p>
+                <ol class="numbered-list">
+                  <li>klik tombol <strong>Create dataset diatas</strong>.</li>
+                  <li>Lakukan klik tombol <strong>Sign In</strong> untuk melakukan login.</li>
+                  <li>Klik tombol <strong>New Project</strong>.</li>
+                  <li>Isi inputan <strong>Project Name</strong> dan <strong>Annotation Group</strong> sesuai
+                    dengan project Anda.</li>
+                  <li>Pilih <strong>Project Type</strong>: Object Detection -> klik tombol <strong>Create
+                      Public Project</strong>.</li>
+                  <li>Pilih <strong>Upload Data</strong>: lakukan upload foto-foto staff dan mahasiswa -> klik
+                    tombol <strong>Save and Continue</strong>.</li>
+                  <li>Pilih <strong>Manual Labeling</strong> -> klik tombol <strong>Start Manual
+                      Labeling</strong> -> assign to Myself.</li>
+                  <li>Pilih <strong>Annotating</strong> -> klik tombol <strong>Start Annotating</strong>.</li>
+                  <li>Pilih <strong>Bounding Box Tool</strong> -> pilih area wajah dan lakukan labelling ->
+                    isi Annotation Editor sesuai dengan nama orangnya -> <strong>Save Enter</strong>.</li>
+                  <li>Kembali ke halaman project pilih <strong>Annotate</strong> -> klik tombol <strong>Add
+                      Image to Dataset</strong> -> pilih <strong>Method What's Train, Valid,
+                      Test?</strong> -> pilih <strong>Split Images Between Train/Valid/Test</strong> ->
+                    klik tombol <strong>Add Images</strong>.</li>
+                  <li>Pilih dataset - pilih tombol <strong>Generate Version</strong>.</li>
+                  <li>Pilih <strong>Preprocessing</strong> -> isi <strong>Resize</strong> menjadi 1024 ->
+                    <strong>Continue</strong>.
+                  </li>
+                  <li><strong>Augmentation</strong> -> <strong>Continue</strong>.</li>
+                  <li>Klik tombol <strong>Create</strong>.</li>
+                  <li>Klik tombol <strong>Download Dataset</strong> -> format YOLOv8 -> pilih <strong>Show
+                      Download Code</strong> -> <strong>Continue</strong>.</li>
+                  <li>Copy model library.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="box">
+                <h4 class="text-center mt-3">Tutorial Train Dataset</h4>
+                <p>Berikut adalah langkah-langkah untuk melatih dataset Anda:</p>
+                <ol>
+                  <ol class="numbered-list">
+                    <li>klik tombol Train Dataset.</li>
+                    <li>Jalankan atau run:
+                      <pre>%pip install ultralytics<br>import ultralytics<br>ultralytics.checks()</pre>
+                    </li>
+                    <li>Tambahkan code yang sudah di download dari dataset roboflow contoh:
+                      <pre># Download COCO val<br>import torch<br>torch.hub.download_url_to_file('https://ultralytics.com/assets/coco2017val.zip', 'tmp.zip')  # download (780M - 5000 images)<br>!unzip -q tmp.zip -d datasets && rm tmp.zip  # unzip<br>-> jalankan atau run</pre>
+                    </li>
+                    <li>buka folder dan pilih file <strong>data.yaml</strong>.</li>
+                    <li>ubah isi dalam data dengan salt path sesuai dengan file contoh:
+                      <pre>data: /content/coba-1/data.yaml<br>test: /content/coba-1/test.yaml<br>train: /content/coba-1/train.yaml<br>val: /content/coba-1/val.yaml<br>-> jangan lupa save</pre>
+                    </li>
+                    <li>ubah isi kode:
+                      <pre># Validate YOLO11n on COCO8 val<br>!yolo val model=yolo11n.pt data=coco8.yaml</pre>
+                      menjadi seperti di bawah ini:
+                      <pre># Validate YOLO11n on COCO8 val<br>!yolo val model=yolov8n.pt data=salin salt path data<br>-> lalu jalankan atau run -> nanti kalau sudah akan ada file YoloV8 dan YoloV11</pre>
+                    </li>
+                    <li>ubah isi kode:
+                      <pre># Train YOLO11n on COCO8 for 3 epochs<br>!yolo train model=yolo11n.pt data=coco8.yaml epochs=3 imgsz=640</pre>
+                      menjadi seperti di bawah ini:
+                      <pre># Train YOLO11n on COCO8 for 3 epochs<br>!yolo train model=yolov8n.pt data=salin salt path data epochs=semakin besar epochs semakin akurat misal 200 imgsz=1024<br>-> lalu jalankan atau run tunggu sampai selesai epochs</pre>
+                    </li>
+                    <li>buka folder <strong>runs</strong> -> <strong>detect</strong> ->
+                      <strong>train</strong> -> <strong>weights</strong> -> pilih <strong>best.pt</strong>
+                      -> download <strong>best.pt</strong>.
+                    </li>
+                  </ol>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+       <footer class="footer footer-transparent">
+          <div class="container">
+            <div class="row text-center align-items-center flex-row-reverse">
+              <div class="col-lg-auto ml-lg-auto">
+                <ul class="list-inline list-inline-dots mb-0">
+                  All rights reserved.
+                </ul>
+              </div>
+              <div class="col-12 col-lg-auto mt-3 mt-lg-0">
+                Copyright ©absensidanmonitoring 2025
+              </div>
+            </div>
+          </div>
+        </footer>
+  </div>
+  </div>
+
+  <!-- MODAL TAMBAH -->
+  <!-- Modal Form -->
+  <div class="modal modal-blur fade" id="modal-tambah" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Tambah Divisi</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="addDivisionForm" method="POST" action="{{ url_for('add_divisi') }}">
+            <div class="mb-3">
+              <label class="form-label">Nama Divisi</label>
+              <input type="text" class="form-control" name="nama_divisi" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-dismiss="modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary ml-auto" form="addDivisionForm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" />
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Tambahkan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal Delete -->
+<!-- Modal Delete -->
+<div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <form method="POST" action="{{ url_for('dataset_admin') }}">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Hapus Model (.pt)</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="action" value="delete">
+
+          <!-- Pilih jenis model -->
+          <div class="form-group">
+            <label for="model_type_delete">Jenis Model</label>
+            <select name="model_type" id="model_type_delete" class="form-control" required onchange="updateModelFileDelete()">
+              <option value="">-- Pilih Jenis Model --</option>
+              <option value="presensi">Presensi (Orang)</option>
+              <option value="pelanggaran">Pelanggaran (Makan/Minum)</option>
+            </select>
+          </div>
+
+          <!-- Pilih nama file (diisi otomatis via JS berdasarkan pilihan di atas) -->
+          <div class="form-group">
+            <label for="model_file_name">Nama File Model</label>
+            <select name="model_file_name" id="model_file_name" class="form-control" required>
+              <option value="">-- Pilih Jenis Model Dulu --</option>
+            </select>
+          </div>
+
+          <div class="alert alert-warning mt-3">
+            <strong>Perhatian:</strong> Model yang dipilih akan dihapus secara permanen.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Hapus</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+  <!-- Libs JS -->
+  <script src="../static/dist/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../static/dist/libs/jquery/dist/jquery.slim.min.js"></script>
+  <script src="../static/dist/libs/peity/jquery.peity.min.js"></script>
+  <script src="../static/dist/libs/apexcharts/dist/apexcharts.min.js"></script>
+  <script src="../static/dist/libs/flatpickr/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Tabler Core -->
+  <script src="../dist/js/tabler.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchFolders();
+    });
+
+    function fetchFolders() {
+      fetch("/list_folders", { credentials: "include" })
+        .then(res => res.json())
+        .then(data => {
+          const container = document.getElementById("folder-container");
+          container.innerHTML = "";
+
+          data.folders.forEach(folder => {
+            const folderCard = `
+  <div class="col folder-item" data-name="${folder}">
+    <div class="card h-100 shadow-sm folder-card">
+      <div class="card-body text-center d-flex flex-column justify-content-center">
+        <i class="fas fa-folder fa-3x text-warning mb-3"></i>
+        <h4 class="mb-2 fw-bold text-truncate" title="${folder}">${folder}</h4>
+        <p class="text-muted small mb-3" role="button" onclick="lihatFoto('${folder}')">Klik untuk melihat</p>
+        <div class="d-flex justify-content-center">
+          <a href="/download_folder?name=${folder}" class="btn btn-sm btn-primary btn-space">
+            <i class="fas fa-download me-1"></i> Download
+          </a>
+          <button onclick="deleteFolder('${folder}')" class="btn btn-sm btn-danger">
+            <i class="fas fa-trash-alt me-1"></i> Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+            container.innerHTML += folderCard;
+          });
+        });
+    }
+    function lihatFoto(folderName) {
+      fetch(`/get_foto_in_folder?name=${folderName}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/json"
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Network response was not ok");
+          return res.json();
+        })
+        .then(data => {
+          const fotoList = document.getElementById("foto-list");
+          fotoList.innerHTML = "";
+
+          if (!data.fotos || data.fotos.length === 0) {
+            fotoList.innerHTML = "<p class='text-center text-muted'>Tidak ada foto di folder ini.</p>";
+          } else {
+            data.fotos.forEach(foto => {
+              const imgEl = document.createElement("div");
+              imgEl.className = "col-6 col-md-3 mb-3";  // ← 4 kolom (12 / 3 = 4)
+              imgEl.innerHTML = `<img src="${foto}" class="img-fluid rounded shadow-sm" alt="Foto Pegawai" />`;
+              fotoList.appendChild(imgEl);
+            });
+          }
+
+          const modal = new bootstrap.Modal(document.getElementById("modalLihatFoto"));
+          modal.show();
+        })
+        .catch(err => {
+          console.error("Gagal memuat foto:", err);
+          alert("Gagal memuat foto. Cek koneksi atau server.");
+        });
+    }
+
+
+    function deleteFolder(folderName) {
+      if (!confirm("Yakin ingin hapus folder ini?")) return;
+      fetch(`/delete_folder?name=${folderName}`, { method: "DELETE" })
+        .then(() => fetchFolders());
+    }
+
+    function deleteAll() {
+      if (!confirm("Yakin ingin hapus semua folder?")) return;
+      fetch("/delete_all_folders", { method: "DELETE" })
+        .then(() => fetchFolders());
+    }
+
+    document.getElementById("search-folder").addEventListener("input", function () {
+      const query = this.value.toLowerCase();
+      document.querySelectorAll(".folder-item").forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        item.style.display = name.includes(query) ? "block" : "none";
+      });
+    });
+  </script>
+
+<script>
+  function updateModelFileDelete() {
+    const modelType = document.getElementById("model_type_delete").value;
+    const modelFileSelect = document.getElementById("model_file_name");
+
+    // Kosongkan dulu
+    modelFileSelect.innerHTML = "";
+
+    // Data dari Flask ke JS (isi sesuai backend kamu)
+    const modelPresensi = "{{ admin.model_path or '' }}";
+    const modelPelanggaran = "{{ admin.model_makanminum or '' }}";
+
+    if (modelType === "presensi" && modelPresensi) {
+      const option = new Option(modelPresensi.split('/').pop(), modelPresensi.split('/').pop());
+      modelFileSelect.add(option);
+    } else if (modelType === "pelanggaran" && modelPelanggaran) {
+      const option = new Option(modelPelanggaran.split('/').pop(), modelPelanggaran.split('/').pop());
+      modelFileSelect.add(option);
+    } else {
+      const option = new Option("Tidak ada model tersedia", "");
+      modelFileSelect.add(option);
+    }
+  }
+</script>
+
+
+  <script>
+    document.body.style.display = "block"
+  </script>
+</body>
+
+</html>
