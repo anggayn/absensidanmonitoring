@@ -67,7 +67,8 @@ Jika belum ada file `requirements.txt`, gunakan ini:
 
 bash
 pip install flask flask_sqlalchemy flask_migrate sqlalchemy werkzeug pandas pygame opencv-python numpy ultralytics requests fpdf
-
+pip install scikit-learn
+pip install facenet-pytorch
 
 4. Set environment variabel (opsional):
 
@@ -75,9 +76,11 @@ bash
 set FLASK_APP=app.py
 set FLASK_ENV=development
 
-5. WhatsApp API Integration (Ultramsg)
+5. WhatsApp API Integration (Ultramsg atau Bablast)
 ULTRAMSG_INSTANCE_ID = 'instance109410'
 ULTRAMSG_API_TOKEN = 'fe469dynm6jlqgaj'
+BABLAST_API_KEY = "TLORNAbLE8sa1mv7k13nijF5cgAc8oO40A82mLYAoETvAsN8Pu94LKttLxOcvtiNEaw9RZ3CVM2uJpPDLFpgmTRqQfI56n5sygMw"
+BABLAST_URL_SEND = "https://apiv2.bablast.id/send"
 
 6. Jalankan aplikasi:
 
@@ -106,5 +109,6 @@ bash
 flask db init
 flask db migrate -m "Initial migration"
 flask db upgrade
+
 
 
