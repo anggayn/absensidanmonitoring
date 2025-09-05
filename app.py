@@ -14,6 +14,14 @@ from flask import send_file
 import zipfile
 import io
 import shutil
+import face_recognition
+from PIL import Image
+from io import BytesIO
+from sklearn.metrics.pairwise import cosine_similarity
+from facenet_pytorch import InceptionResnetV1, MTCNN
+from flask import request, has_request_context, current_app as app
+
+
 
 # import Secure File
 from werkzeug.utils import secure_filename
@@ -58,6 +66,8 @@ import base64
 from sqlalchemy import or_, String
 
 app = Flask(__name__, template_folder='pages')
+app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # batas 25MB
+
 
 app.secret_key = 'your_secret_key'
 
@@ -75,32 +85,66 @@ migrate = Migrate(app, db)
 
 # whatshapp
 
-ULTRAMSG_INSTANCE_ID = 'instance109410'
-ULTRAMSG_API_TOKEN = 'fe469dynm6jlqgaj'
+BABLAST_API_KEY = "TLORNAbLE8sa1mv7k13nijF5cgAc8oO40A82mLYAoETvAsN8Pu94LKttLxOcvtiNEaw9RZ3CVM2uJpPDLFpgmTRqQfI56n5sygMw"
+BABLAST_URL_SEND = "https://apiv2.bablast.id/send"
 
-def encode_image_to_base64(image_path):
-    """Mengubah gambar menjadi base64 untuk dikirim melalui WhatsApp."""
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
+def get_base_url():
+    """Ambil URL dasar server."""
+    if has_request_context():
+        return request.host_url.rstrip("/")
+    # fallback kalau tidak ada request aktif
+    return app.config.get("BASE_PUBLIC_URL", "http://localhost:5000")
+
+def send_bablast_text_and_image(phone, message, image_path=None, caption=""):
+    """Kirim teks + gambar via Bablast."""
+    payload = {
+        "phone": phone,
+        "message": message
+    }
+
+    # Tambahkan gambar jika ada
+    if image_path and os.path.exists(image_path):
+        rel_path = image_path.replace("\\", "/")
+
+        # Hapus prefix "static/" kalau ada
+        if rel_path.startswith("static/"):
+            rel_path = rel_path[len("static/"):]
+
+        image_url = f"{get_base_url()}/static/{rel_path}"
+        payload["image"] = image_url
+        payload["caption"] = caption
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {BABLAST_API_KEY}"
+    }
+
+    try:
+        r = requests.post(BABLAST_URL_SEND, headers=headers, json=payload)
+        print(" Payload terkirim:", payload)
+        print(" Response Bablast:", r.status_code, r.text)
+    except Exception as e:
+        print(" Gagal kirim pesan/gambar:", e)
+
 
 def send_whatsapp_message(person_name, category, timestamp, role_kamera, image_path):
-    """Mengirim pesan WhatsApp beserta bukti foto berdasarkan data absensi."""
+    """Mengirim pesan WhatsApp & foto absensi via Bablast."""
     with app.app_context():
         pegawai = Pegawai.query.filter_by(nama_pegawai=person_name).first()
         if not pegawai or not pegawai.nomor_pegawai:
-            print(f"⚠️ Nomor WhatsApp untuk {person_name} tidak ditemukan.")
+            print(f" Nomor WhatsApp untuk {person_name} tidak ditemukan.")
             return
         
         recipient_number = pegawai.nomor_pegawai
 
-        # Ambil data absensi terbaru
-        latest_absensi = AbsensiPegawai.query.filter_by(pegawai_id=pegawai.id).order_by(AbsensiPegawai.tanggal.desc()).first()
+        latest_absensi = AbsensiPegawai.query.filter_by(
+            pegawai_id=pegawai.id
+        ).order_by(AbsensiPegawai.tanggal.desc()).first()
         
         if not latest_absensi:
-            print(f"⚠️ Data absensi tidak ditemukan untuk {person_name}.")
+            print(f" Data absensi tidak ditemukan untuk {person_name}.")
             return
         
-        # Tentukan jenis absensi berdasarkan role kamera
         if role_kamera == "in":
             waktu_presensi = latest_absensi.presensi_datang.strftime("%H:%M:%S") if latest_absensi.presensi_datang else "Tidak Tersedia"
             foto_path = latest_absensi.foto_datang
@@ -108,10 +152,10 @@ def send_whatsapp_message(person_name, category, timestamp, role_kamera, image_p
             waktu_presensi = latest_absensi.presensi_pulang.strftime("%H:%M:%S") if latest_absensi.presensi_pulang else "Tidak Tersedia"
             foto_path = latest_absensi.foto_pulang
         else:
-            print(f"⚠️ Role kamera tidak valid: {role_kamera}")
+            print(f" Role kamera tidak valid: {role_kamera}")
             return
 
-        # Pesan teks
+        # Isi pesan teks
         message_body = (
             f"📢 *Notifikasi Absensi Pegawai*\n\n"
             f"📌 *Nama:* {person_name}\n"
@@ -123,26 +167,21 @@ def send_whatsapp_message(person_name, category, timestamp, role_kamera, image_p
             f"Terima kasih telah melakukan absensi."
         )
 
-        # Kirim pesan teks ke WhatsApp
-        text_url = f"https://api.ultramsg.com/{ULTRAMSG_INSTANCE_ID}/messages/chat"
-        text_payload = {'token': ULTRAMSG_API_TOKEN, 'to': recipient_number, 'body': message_body}
-        requests.post(text_url, data=text_payload)
-
-        # Kirim foto absensi jika tersedia
+        # Pastikan path gambar benar (tidak double "static/")
         if foto_path:
-            full_image_path = os.path.join('static', foto_path)
-            if os.path.exists(full_image_path):
-                encoded_image = encode_image_to_base64(full_image_path)
-                image_url = f"https://api.ultramsg.com/{ULTRAMSG_INSTANCE_ID}/messages/image"
-                image_payload = {
-                    'token': ULTRAMSG_API_TOKEN,
-                    'to': recipient_number,
-                    'image': encoded_image,
-                    'caption': f"Bukti Absensi {person_name} ({role_kamera.upper()})"
-                }
-                requests.post(image_url, data=image_payload)
+            if foto_path.startswith("static/"):
+                full_image_path = foto_path
             else:
-                print(f"⚠️ File foto tidak ditemukan: {full_image_path}")
+                full_image_path = os.path.join("static", foto_path)
+        else:
+            full_image_path = None
+
+        send_bablast_text_and_image(
+            phone=recipient_number,
+            message=message_body,
+            image_path=full_image_path,
+            caption=f"Bukti Absensi {person_name} ({role_kamera.upper()})" if foto_path else ""
+        )
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -448,36 +487,36 @@ def login():
                     # === Load YOLO model presensi (orang) ===
                     try:
                         model_path = os.path.join(app.root_path, 'static', user.model_path)
-                        print("🔍 Mencoba memuat model presensi dari:", model_path)
+                        print(" Mencoba memuat model presensi dari:", model_path)
 
                         if os.path.exists(model_path):
                             model_instance = YOLO(model_path)
                             models_by_admin[int(user.id)] = model_instance
-                            print("✅ Model presensi berhasil dimuat")
+                            print(" Model presensi berhasil dimuat")
 
                             load_class_names(user.id, model_path)
-                            print("✅ class_names berhasil dimuat")
+                            print(" class_names berhasil dimuat")
                         else:
-                            print(f"⚠️ Model presensi belum tersedia di: {model_path}")
+                            print(f" Model presensi belum tersedia di: {model_path}")
                     except Exception as e:
-                        print(f"❌ Gagal memuat model presensi: {e}")
+                        print(f" Gagal memuat model presensi: {e}")
 
                     # === Load YOLO model makan/minum ===
                     try:
                         if user.model_makanminum:
                             model_path_pelanggaran = os.path.join(app.root_path, 'static', 'models', admin_data.model_makanminum)
-                            print("🔍 Mencoba memuat model makan/minum dari:", model_path_pelanggaran)
+                            print(" Mencoba memuat model makan/minum dari:", model_path_pelanggaran)
 
                             if os.path.exists(model_path_pelanggaran):
                                 model_pelanggaran = YOLO(model_path_pelanggaran)
                                 model_pelanggaran_by_admin[int(user.id)] = model_pelanggaran
-                                print("✅ Model makan/minum berhasil dimuat")
+                                print(" Model makan/minum berhasil dimuat")
                             else:
-                                print(f"⚠️ Model makan/minum belum tersedia di: {model_path_pelanggaran}")
+                                print(f" Model makan/minum belum tersedia di: {model_path_pelanggaran}")
                         else:
-                            print("⚠️ Kolom model_makanminum kosong di database Admin")
+                            print(" Kolom model_makanminum kosong di database Admin")
                     except Exception as e:
-                        print(f"❌ Gagal memuat model makan/minum: {e}")
+                        print(f" Gagal memuat model makan/minum: {e}")
 
                 return response
             else:
@@ -486,9 +525,6 @@ def login():
             return "Username tidak ditemukan!"
 
     return render_template('sign-in.html')
-
-
-
 
 
 # Route Dashboard Superadmin
@@ -670,8 +706,6 @@ def super_admin_user():
     )
 
 
-
-
 # Route Dashboard Admin
 @app.route('/divisi_dashboard')
 def admin_dashboard():
@@ -816,11 +850,12 @@ def divisi_pegawai():
         elif action == 'delete':
             pegawai = Pegawai.query.get(pegawai_id)
             if pegawai:
+                # Hapus dulu data absensi terkait
+                AbsensiPegawai.query.filter_by(pegawai_id=pegawai.id).delete()
                 db.session.delete(pegawai)
                 db.session.commit()
-                flash('Pegawai berhasil dihapus!', 'danger')
+                flash('Pegawai dan seluruh data absensinya berhasil dihapus!', 'danger')
 
-        return redirect(url_for('divisi_pegawai'))
 
     # === HANDLE GET ===
     page = request.args.get('page', 1, type=int)
@@ -1677,6 +1712,94 @@ def admin_lama_kerja():
         role=role
     )
 
+# Route export lama kerja pegawai pdf
+class PDFLamaKerja(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "Laporan Lama Kerja Pegawai", ln=True, align="C")
+        self.ln(5)
+
+
+@app.route('/export-lama-kerja', methods=['GET'])
+def export_lama_kerja():
+    # Ambil parameter filter dari request
+    tanggal_mulai = request.args.get('tanggal_mulai')
+    tanggal_selesai = request.args.get('tanggal_selesai')
+    pegawai_id = request.args.get('pegawai_id')
+
+    query = LamaKerja.query
+
+    # Filter tanggal jika ada
+    if tanggal_mulai and tanggal_selesai:
+        try:
+            t_mulai = datetime.strptime(tanggal_mulai, "%Y-%m-%d")
+            t_selesai = datetime.strptime(tanggal_selesai, "%Y-%m-%d")
+            query = query.filter(LamaKerja.tanggal.between(t_mulai, t_selesai))
+        except:
+            pass
+
+    # Filter pegawai jika ada
+    if pegawai_id:
+        query = query.filter_by(pegawai_id=pegawai_id)
+
+    lama_kerja_data = query.all()
+
+    pdf = PDF("L", "mm", "A4")  # "L" = Landscape, "P" = Portrait (default)
+    pdf.add_page()
+    pdf.set_font("Arial", size=10)
+
+    # Header tabel
+    pdf.set_font("Arial", "B", 10)
+    headers = ["Tanggal", "Pegawai", "Divisi", "Lama Terdeteksi", "Area CCTV", "Foto Bukti", "Pelanggaran", "Foto Pelanggaran"]
+    col_widths = [25, 30, 35, 45, 35, 35, 30, 35]
+    row_height = 20  # tinggi baris
+    for header, w in zip(headers, col_widths):
+        pdf.cell(w, row_height, header, border=1, align="C")
+    pdf.ln()
+
+    # Isi tabel
+    pdf.set_font("Arial", size=9)
+    for row in lama_kerja_data:
+        pdf.cell(col_widths[0], row_height, row.tanggal.strftime('%d/%m/%Y'), border=1)
+        pdf.cell(col_widths[1], row_height, row.nama_pegawai, border=1)
+        pdf.cell(col_widths[2], row_height, row.divisi or "-", border=1)
+
+        # Lama terdeteksi pakai format durasi
+        pdf.cell(
+            col_widths[3],
+            row_height,
+            format_durasi(row.lama_terdeteksi) if row.lama_terdeteksi else "-",
+            border=1
+        )
+
+        pdf.cell(col_widths[4], row_height, row.area_cctv or "-", border=1)
+
+        # Foto bukti
+        if row.foto_bukti and os.path.exists(row.foto_bukti):
+            x = pdf.get_x()
+            y = pdf.get_y()
+            pdf.cell(col_widths[5], row_height, "", border=1)  # cell kosong tapi ada border
+            pdf.image(row.foto_bukti, x=x+2, y=y+2, w=col_widths[5]-4, h=row_height-4)
+        else:
+            pdf.cell(col_widths[5], row_height, "Tidak ada", border=1, align="C")
+
+        # Pelanggaran
+        pdf.cell(col_widths[6], row_height, row.pelanggaran or "Tidak ada", border=1, align="C")
+
+        # Foto pelanggaran
+        if row.foto_pelanggaran and os.path.exists(row.foto_pelanggaran):
+            x = pdf.get_x()
+            y = pdf.get_y()
+            pdf.cell(col_widths[7], row_height, "", border=1)
+            pdf.image(row.foto_pelanggaran, x=x+2, y=y+2, w=col_widths[7]-4, h=row_height-4)
+        else:
+            pdf.cell(col_widths[7], row_height, "Tidak ada", border=1, align="C")
+
+        pdf.ln()  # next row
+
+    return Response(pdf.output(dest='S').encode('latin-1'),
+                    mimetype='application/pdf',
+                    headers={'Content-Disposition': 'attachment;filename=lama_kerja.pdf'})
 
 @app.template_filter('format_durasi')
 def format_durasi(detik):
@@ -2024,12 +2147,12 @@ def dataset_admin():
         model_type = request.form.get('model_type')  # <== Ambil jenis model
 
         # Tentukan field & nama file berdasarkan jenis model
-        if model_type == 'pelanggaran':
-            db_field = 'model_makanminum'
-            filename_suffix = '_makanminum_model.pt'
-        else:
-            db_field = 'model_path'
-            filename_suffix = '_model.pt'
+        if model_type != 'pelanggaran':
+            flash('Jenis model tidak valid.', 'danger')
+            return redirect(url_for('dataset_admin'))
+
+        db_field = 'model_makanminum'
+        filename_suffix = '_makanminum_model.pt'
 
         filename = f"{admin.nama_instansi}{filename_suffix}"
         model_folder = os.path.join(app.root_path, 'static', 'models')
@@ -2096,56 +2219,109 @@ def dataset_admin():
     return render_template('dataset_admin.html', admin=admin, username=session.get('username'),
     role=session.get('role'))
 
-@app.route('/pegawai_upload', methods=['GET', 'POST'])
+@app.route('/pegawai_upload', methods=['GET'])
 def upload_photo():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        photos = request.files.getlist('photos')
-
-        pegawai_id = request.cookies.get('pegawai_id')
-        admin_id = request.cookies.get('admin_id')
-        username = request.cookies.get('username')
-
-        if not pegawai_id or not admin_id or not username:
-            return jsonify({'success': False, 'message': 'Informasi login tidak lengkap di cookies'})
-
-        pegawai = Pegawai.query.filter_by(id=pegawai_id, admin_id=admin_id, username=username).first()
-
-        if not pegawai:
-            return jsonify({'success': False, 'message': 'Data pegawai tidak ditemukan atau tidak valid'})
-
-        if name != pegawai.nama_pegawai:
-            return jsonify({'success': False, 'message': 'Nama pegawai tidak cocok dengan akun login'})
-
-        if not photos:
-            return jsonify({'success': False, 'message': 'Foto tidak ditemukan'})
-
-        base_dir = os.path.join(app.root_path, 'static', 'foto_dataset')
-        folder_path = os.path.join(base_dir, f'admin_{admin_id}', secure_filename(pegawai.nama_pegawai))
-        os.makedirs(folder_path, exist_ok=True)
-
-        for photo in photos:
-            if photo and allowed_file(photo.filename):
-                filename = os.path.basename(photo.filename)
-                photo.save(os.path.join(folder_path, secure_filename(filename)))
-
-        rel_path = os.path.relpath(folder_path, app.root_path)
-        pegawai.folder_path = rel_path
-        db.session.commit()
-
-        return jsonify({'success': True})
-
-    # Ambil dari session untuk GET request
     if 'username' not in session or 'role' not in session:
         return redirect(url_for('login'))
+    kamera_list = KonfigurasiKamerapresensi.query.all()
+    return render_template('pegawai_upload.html', username=session['username'], role=session['role'], daftar_kamera=kamera_list)
 
-    username = session['username']
-    role = session['role']
+@app.route('/upload_capture_image', methods=['POST'])
+def upload_capture_image():
+    name = request.form.get('name')
+    direction = request.form.get('direction')
+    index = request.form.get('index')
+    image_data = request.form.get('image')
 
-    return render_template('pegawai_upload.html', username=username, role=role)
+    pegawai_id = request.cookies.get('pegawai_id')
+    admin_id = request.cookies.get('admin_id')
+    username = request.cookies.get('username')
 
+    if not pegawai_id or not admin_id or not username:
+        return jsonify({'success': False, 'message': 'Login tidak valid'})
 
+    pegawai = Pegawai.query.filter_by(id=pegawai_id, admin_id=admin_id, username=username).first()
+    if not pegawai or name != pegawai.nama_pegawai:
+        return jsonify({'success': False, 'message': 'Data pegawai tidak cocok'})
 
+    folder_path = os.path.join(app.root_path, 'static', 'foto_dataset', f'admin_{admin_id}', secure_filename(name))
+    os.makedirs(folder_path, exist_ok=True)
+
+    if image_data and image_data.startswith("data:image"):
+        try:
+            header, encoded = image_data.split(",", 1)
+            img_bytes = base64.b64decode(encoded)
+            image = Image.open(BytesIO(img_bytes)).convert("RGB")
+
+            filename = f"{direction}_{index}.jpg"
+            filepath = os.path.join(folder_path, filename)
+            image.save(filepath, format="JPEG")
+
+            pegawai.folder_path = os.path.relpath(folder_path, app.root_path)
+            db.session.commit()
+
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Gagal menyimpan gambar: {str(e)}'})
+
+    return jsonify({'success': False, 'message': 'Format gambar tidak valid'})
+
+@app.route('/capture_from_rtsp', methods=['POST'])
+def capture_from_rtsp():
+    import cv2
+    import base64
+
+    data = request.get_json()
+    ip_rtsp = data.get('ip_rtsp')
+    direction = data.get('direction')
+    index = data.get('index')
+    name = data.get('name')
+
+    cap = cv2.VideoCapture(ip_rtsp)
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret:
+        return jsonify({'success': False, 'message': 'Gagal mengakses RTSP'})
+
+    frame = cv2.resize(frame, (640, 480))
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]  # Kompres kualitas
+    _, buffer = cv2.imencode('.jpg', frame, encode_param)
+    encoded = base64.b64encode(buffer).decode('utf-8')
+    return jsonify({'success': True, 'image_url': f"data:image/jpeg;base64,{encoded}"})
+
+@app.route('/video_feed_rtsp')
+def video_feed_rtsp():
+    import cv2
+    from flask import Response, request
+
+    ip_rtsp = request.args.get('ip_rtsp')
+    if not ip_rtsp:
+        return "RTSP URL tidak ditemukan", 400
+
+    def generate():
+        cap = cv2.VideoCapture(ip_rtsp)
+        if not cap.isOpened():
+            yield b''
+            return
+
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            # Resize (misalnya ke 640x480)
+            frame = cv2.resize(frame, (640, 480))
+
+            # Kompres kualitas JPEG
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+            _, buffer = cv2.imencode('.jpg', frame, encode_param)
+
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        cap.release()
+
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/get_foto_in_folder")
 def get_foto_in_folder():
@@ -2239,15 +2415,6 @@ def download_folder():
 def generate_unique_filename(extension):
     return f"{uuid.uuid4()}.{extension}"
 
-# Warna yang akan digunakan untuk bounding box setiap kelas
-colors = {
-0: (0, 0, 255), 
-1: (0, 255, 0),
-2: (255, 0, 0),
-3: (255, 255, 0),
-
-
-}
 
 def load_class_names(admin_id, model_path):
     # Cek apakah file .txt tersedia
@@ -2265,32 +2432,52 @@ def load_class_names(admin_id, model_path):
 
 
 # Fungsi untuk menambahkan kotak deteksi dan label ke gambar
-def custom_plot(results, detected_persons, class_names, frame=None, thickness=2, font_scale=1.0, color_override=None):
+def custom_plot(results, detected_persons, class_names, recognized_faces=None, frame=None, thickness=2, font_scale=1.0, color_override=None):
     img = frame if frame is not None else results[0].orig_img  # Gunakan frame jika diberikan
 
     for box in results[0].boxes:
         cls = int(box.cls[0])
         confidence = box.conf[0]
 
-        if confidence < 0.5:
+        if confidence < 0.7:
             continue
-
-        label_name = class_names.get(cls, f"ID-{cls}")
-        label = f"{label_name} {confidence:.2f}"
-
-        # Tentukan warna berdasarkan label_name
-        if color_override:
-            color = color_override
-        else:
-            if label_name.lower() == "makanan":
-                color = (255, 0, 0)  # Biru
-            elif label_name.lower() == "minuman":
-                color = (0, 0, 255)  # Merah
-            else:
-                color = (0, 255, 0)  # Hijau untuk orang/presensi
 
         x1, y1, x2, y2 = map(int, box.xyxy[0])
 
+        # Default label dari class YOLO
+        label_name = class_names.get(cls, f"ID-{cls}")
+
+        # Cek apakah ada hasil face recognition
+        label_override = None
+        if recognized_faces:
+            for (rx1, ry1, rx2, ry2), name in recognized_faces.items():
+                # Debug posisi bounding box
+                print(f"YOLO bbox: ({x1},{y1},{x2},{y2}) vs FaceRec: ({rx1},{ry1},{rx2},{ry2}) => {name}")
+
+                # Longgarkan jarak kecocokan bbox dari 15px → 30px
+                if abs(x1 - rx1) < 30 and abs(y1 - ry1) < 30 and abs(x2 - rx2) < 30 and abs(y2 - ry2) < 30:
+                    label_override = name
+                    break
+
+        if label_override:
+            label = f"{label_override} {confidence:.2f}"
+        else:
+            continue
+
+     # Warna label
+        if color_override:
+            color = color_override
+        else:
+            if label_override and label_override.lower() != "unknown":
+                color = (0, 255, 0)  #  Hijau untuk wajah dikenali
+            elif label_name.lower() == "makanan":
+                color = (255, 0, 0)  # Biru
+            elif label_name.lower() == "minuman":
+                color = (0, 255, 255)  #  Kuning
+            else:
+                color = (0, 0, 255)  #  Merah untuk unknown
+
+        # Gambar kotak dan label
         cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
         cv2.putText(
             img,
@@ -2313,9 +2500,11 @@ def custom_plot(results, detected_persons, class_names, frame=None, thickness=2,
             thickness
         )
 
-        detected_persons.add(label_name)
+        detected_persons.add(label_override if label_override else label_name)
 
     return img
+
+
 
 # Membuat tabel secara otomatis dan menambah data superadmin pertama kali
 with app.app_context():
@@ -2392,7 +2581,7 @@ for kamera in kamera_configs:
             valid_rtsp_presensi_out.append(kamera.ip_rtsp)
             caps_presensi_out.append(cap)
     else:
-        print(f"❌ Kamera {kamera.role_kamera.value} dengan URL {kamera.ip_rtsp} tidak aktif, dilewati.")
+        print(f" Kamera {kamera.role_kamera.value} dengan URL {kamera.ip_rtsp} tidak aktif, dilewati.")
 
 # Inisialisasi kamera pelacakan kerja
 for url in rtsp_pelacakan:
@@ -2401,7 +2590,7 @@ for url in rtsp_pelacakan:
         caps_pelacakan.append(cap)
         valid_rtsp_pelacakan.append(url)
     else:
-        print(f"❌ Kamera pelacakan kerja dengan URL {url} tidak aktif, dilewati.")
+        print(f"Kamera pelacakan kerja dengan URL {url} tidak aktif, dilewati.")
 
 # Lock dan buffer untuk masing-masing kamera
 frame_locks_in = [threading.Lock() for _ in valid_rtsp_presensi_in]
@@ -2429,7 +2618,7 @@ def frame_grabber(index, caps, latest_frames, frame_locks):
     while True:
         success, frame = caps[index].read()
         if not success:
-            print(f"❌ Gagal membaca frame dari kamera {index + 1}")
+            print(f" Gagal membaca frame dari kamera {index + 1}")
             continue
         with frame_locks[index]:
             latest_frames[index] = frame
@@ -2458,16 +2647,72 @@ threads_pelacakan = [
 for thread in threads_pelacakan:
     thread.start()
 
-# Fungsi untuk menangani streaming video dengan deteksi YOLO
-def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
-    """Menghasilkan frame yang diolah untuk streaming dari kamera tertentu."""
-    global attendance_log_today, last_logged_time
-    detection_start_times = {}  # Menyimpan waktu mulai deteksi untuk setiap orang
 
-    model = None  # Pastikan variabel model dideklarasikan di awal
+# Inisialisasi global embeddings
+
+#Bandingkan dengan semua vektor
+face_recognition_embeddings = {}
+# align + resize wajah
+mtcnn = MTCNN(image_size=160, margin=10)
+# hasilkan vektor embedding (512 dimensi)
+resnet = InceptionResnetV1(pretrained='vggface2').eval()
+
+def load_face_embeddings(admin_id):
+    embeddings = {}
+    base_path = os.path.join(app.root_path, 'static', 'foto_dataset', f'admin_{admin_id}')
+    if not os.path.exists(base_path):
+        return embeddings
+
+    for nama_pegawai in os.listdir(base_path):
+        pegawai_folder = os.path.join(base_path, nama_pegawai)
+        if not os.path.isdir(pegawai_folder):
+            continue
+
+        embs = []
+        for file in os.listdir(pegawai_folder):
+            if not file.lower().endswith(('jpg', 'jpeg', 'png')):
+                continue
+            img_path = os.path.join(pegawai_folder, file)
+            img = Image.open(img_path)
+            face = mtcnn(img)
+            if face is not None:
+                emb = resnet(face.unsqueeze(0)).detach().numpy()
+                embs.append(emb)
+
+        if embs:
+            mean_emb = np.mean(np.vstack(embs), axis=0)
+            embeddings[nama_pegawai] = mean_emb
+
+    return embeddings
+
+recognition_start_times = {}
+
+def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
+    global attendance_log_today, last_logged_time
+    detection_start_times = {}
+
+    model = None
     class_names = {}
 
+    # Variabel untuk FPS
+    prev_time = time.time()
+    fps_counter = 0
+    fps_display = 0
+
+    # Tunggu hingga frame pertama tersedia
+    while latest_frames[index] is None:
+        time.sleep(0.1)
+
     while True:
+        # Hitung FPS
+        current_time_fps = time.time()
+        fps_counter += 1
+        if current_time_fps - prev_time >= 1.0:  # tiap 1 detik
+            fps_display = fps_counter
+            fps_counter = 0
+            prev_time = current_time_fps
+            print(f"[Kamera {index}] FPS: {fps_display}")
+
         with frame_locks[index]:
             if latest_frames[index] is None:
                 continue
@@ -2480,116 +2725,159 @@ def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
             time.sleep(1)
             continue
 
+        # Load YOLO model jika belum
         if model is None:
             model = models_by_admin.get(admin_id)
             if model is None:
-                    print(f" Model belum dimuat, mencoba muat ulang...")
-                    try:
-                        with app.app_context():
-                            admin_data = Admin.query.get(admin_id)
-                            if not admin_data or not admin_data.model_path:
-                                print(f" Admin dengan ID {admin_id} tidak ditemukan atau model_path kosong.")
-                                time.sleep(1)
-                                continue
+                try:
+                    with app.app_context():
+                        admin_data = db.session.get(Admin, admin_id)
+                        if not admin_data or not admin_data.model_path:
+                            time.sleep(1)
+                            continue
 
-                            model_path = os.path.join(app.root_path, 'static', admin_data.model_path)
-                            if not os.path.exists(model_path):
-                                print(f" Model path tidak ditemukan: {model_path}")
-                                time.sleep(1)
-                                continue
+                        model_path = os.path.join(app.root_path, 'static', admin_data.model_path)
+                        if not os.path.exists(model_path):
+                            time.sleep(1)
+                            continue
 
-                            model = YOLO(model_path)
-                            models_by_admin[int(admin_id)] = model
-                            print(f" Model untuk admin_id {admin_id} berhasil dimuat dari {model_path}")
-                    #  Load class names dari .txt atau model
-                            txt_path = model_path.replace('.pt', '.txt')
-                            if os.path.exists(txt_path):
-                                with open(txt_path, 'r') as f:
-                                    names = [line.strip() for line in f.readlines()]
-                                class_names = {i: name for i, name in enumerate(names)}
-                                print(f" class_names berhasil dimuat dari .txt untuk admin_id {admin_id}")
-                            else:
-                                class_names = model.names
-                                print(f" File .txt tidak ditemukan. Menggunakan class_names dari model.pt")
+                        model = YOLO(model_path)
+                        models_by_admin[int(admin_id)] = model
 
-                            class_names_by_admin[int(admin_id)] = class_names
+                        txt_path = model_path.replace('.pt', '.txt')
+                        if os.path.exists(txt_path):
+                            with open(txt_path, 'r') as f:
+                                names = [line.strip() for line in f.readlines()]
+                            class_names = {i: name for i, name in enumerate(names)}
+                        else:
+                            class_names = model.names
 
-                    except Exception as e:
-                        print(f" Gagal memuat model untuk admin_id {admin_id}: {e}")
-                        time.sleep(1)
-                        continue
+                        class_names_by_admin[int(admin_id)] = class_names
 
-            #  Pastikan class_names tersedia di semua jalur
-            class_names = class_names_by_admin.get(int(admin_id), {})
+                except Exception as e:
+                    print(f" Gagal memuat model: {e}")
+                    time.sleep(1)
+                    continue
 
+        class_names = class_names_by_admin.get(int(admin_id), {})
+
+        # Load face embeddings
+        if admin_id not in face_recognition_embeddings:
+            print(f" Memuat face embeddings untuk admin {admin_id}...")
+            face_recognition_embeddings[admin_id] = load_face_embeddings(admin_id)
+
+        # Deteksi objek dengan YOLO
         results = model(resized_frame)
         detected_persons = set()
-        frame_with_boxes = custom_plot(results, detected_persons, class_names)
+        recognized_faces = {}  # 
 
-        # Jika ada objek yang terdeteksi
-        if len(results[0].boxes) > 0:
-            detected_classes = {int(box.cls[0]) for box in results[0].boxes if box.conf[0] >= 0.5}
+        # Face Recognition
+        for box in results[0].boxes:
+            if box.conf[0] < 0.7:
+                continue
+
+            bbox = box.xyxy[0].cpu().numpy().astype(int)
+            x1, y1, x2, y2 = bbox
+            face_crop = resized_frame[y1:y2, x1:x2]
+
+            if face_crop.shape[0] < 50 or face_crop.shape[1] < 50:
+                print(" Face crop terlalu kecil, dilewati")
+                continue
+
+            face_tensor = mtcnn(Image.fromarray(cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)))
+            if face_tensor is None:
+                print(" MTCNN gagal deteksi wajah dari crop YOLO")
+                continue
+
+            emb = resnet(face_tensor.unsqueeze(0)).detach().numpy()
+            best_match = "Unknown"
+            max_sim = 0.0
+
+            for name, mean_emb in face_recognition_embeddings[admin_id].items():
+                sim = cosine_similarity(emb, mean_emb.reshape(1, -1))[0][0]
+                if sim > max_sim:
+                    max_sim = sim
+                    best_match = name
+
             current_time = time.time()
-            current_date = datetime.now().strftime("%d-%m-%Y")
+            if max_sim >= 0.7:
+                person_name = best_match
+                print(f" Wajah dikenali: {best_match} (sim: {max_sim:.2f})")
+
+                if person_name not in recognition_start_times:
+                    recognition_start_times[person_name] = current_time
+                elif current_time - recognition_start_times[person_name] >= 3:
+                    detected_persons.add(person_name)
+            else:
+                person_name = "Unknown"
+                if person_name in recognition_start_times:
+                    del recognition_start_times[person_name]
+
+                print(f" Similarity terlalu rendah (sim: {max_sim:.2f})")
+
+            # Simpan nama final ke bounding box
+            recognized_faces[(x1, y1, x2, y2)] = person_name
+
+
+        # Gambar kotak dan label ke frame
+        frame_with_boxes = custom_plot(results, detected_persons, class_names, recognized_faces, frame=resized_frame.copy())
+
+        if detected_persons:
             current_datetime = datetime.now()
-            
-            person_name = "Unknown"
-            for cls_index in detected_classes:
-                person_name = class_names.get(cls_index, "Unknown")
-                
+            current_date = current_datetime.date()
+            current_time_only = current_datetime.time()
+
             with app.app_context():
-                pegawai = Pegawai.query.filter_by(nama_pegawai=person_name).first()
-                config = KonfigurasiKamerapresensi.query.filter_by(role_kamera=role_kamera).first()
+                for person_name in detected_persons:
+                    pegawai = Pegawai.query.filter_by(nama_pegawai=person_name).first()
+                    config = KonfigurasiKamerapresensi.query.filter_by(role_kamera=role_kamera).first()
 
-                if pegawai and config:
+                    if not pegawai or not config:
+                        continue
+
+                    absensi = AbsensiPegawai.query.filter_by(pegawai_id=pegawai.id, tanggal=current_date).first()
+
                     if role_kamera == "in":
-                        if person_name not in attendance_log_today:
-                            if person_name not in detection_start_times:
-                                detection_start_times[person_name] = current_time
-                            elif current_time - detection_start_times[person_name] >= 5:
-                                image_filename = generate_unique_filename("jpg")
-                                image_path = os.path.join('static', 'images', image_filename)
-                                cv2.imwrite(image_path, frame_with_boxes)
-
-                                detected_persons.add(person_name)
-
-                                new_absensi = AbsensiPegawai(
-                                    pegawai_id=pegawai.id,
-                                    tanggal=current_datetime.date(),
-                                    presensi_datang=current_datetime.time(),
-                                    foto_datang=f'images/{image_filename}',
-                                    jam_kerja=config.jam_berakhir_kedatangan,
-                                    jam_selesai_kerja=config.jam_berakhir_pulang,
-                                    admin_id=admin_id,
-                                    status="Belumpulang"
-                                )
-                                db.session.add(new_absensi)
-                                db.session.commit()
-
-                                #  Kirim WhatsApp setelah absensi dicatat
-                                send_whatsapp_message(
-                                    person_name,
-                                    "Presensi Datang",
-                                    current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
-                                    role_kamera,
-                                    f'images/{image_filename}'
-                                )
-
-                                attendance_log_today[person_name] = current_date
-                                last_logged_time[person_name] = current_time
-                                del detection_start_times[person_name]
-
-                    elif role_kamera == "out":
-                        absensi = AbsensiPegawai.query.filter_by(pegawai_id=pegawai.id, tanggal=current_datetime.date()).first()
-                        if absensi and absensi.presensi_pulang is None:
+                        jam_mulai = config.jam_mulai_kedatangan
+                        if current_time_only >= jam_mulai and not absensi:
                             image_filename = generate_unique_filename("jpg")
                             image_path = os.path.join('static', 'images', image_filename)
                             cv2.imwrite(image_path, frame_with_boxes)
 
-                            presensi_pulang_time = current_datetime.time()
-                            jam_selesai_kerja = datetime.strptime(str(absensi.jam_selesai_kerja), "%H:%M:%S").time()
-                            selisih_detik = (datetime.combine(date.today(), presensi_pulang_time) -
-                            datetime.combine(date.today(), jam_selesai_kerja)).total_seconds()
+                            new_absensi = AbsensiPegawai(
+                                pegawai_id=pegawai.id,
+                                tanggal=current_date,
+                                presensi_datang=current_time_only,
+                                foto_datang=f'images/{image_filename}',
+                                jam_kerja=config.jam_berakhir_kedatangan,
+                                jam_selesai_kerja=config.jam_berakhir_pulang,
+                                admin_id=admin_id,
+                                status="Belumpulang"
+                            )
+                            db.session.add(new_absensi)
+                            db.session.commit()
+
+                            send_whatsapp_message(
+                                person_name,
+                                "Presensi Datang",
+                                current_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+                                role_kamera,
+                                f'images/{image_filename}'
+                            )
+                            attendance_log_today[person_name] = str(current_date)
+
+                    elif role_kamera == "out":
+                        jam_mulai_pulang = config.jam_mulai_pulang
+                        if current_time_only >= jam_mulai_pulang and absensi and absensi.presensi_pulang is None:
+                            image_filename = generate_unique_filename("jpg")
+                            image_path = os.path.join('static', 'images', image_filename)
+                            cv2.imwrite(image_path, frame_with_boxes)
+
+                            absensi.presensi_pulang = current_time_only
+                            absensi.foto_pulang = f'images/{image_filename}'
+
+                            selisih_detik = (datetime.combine(date.today(), current_time_only) -
+                                             datetime.combine(date.today(), absensi.jam_selesai_kerja)).total_seconds()
                             if selisih_detik > 0:
                                 jam = int(selisih_detik // 3600)
                                 menit = int((selisih_detik % 3600) // 60)
@@ -2597,12 +2885,8 @@ def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
                             else:
                                 absensi.jam_lembur = dt_time(0, 0, 0)
 
-
-                            absensi.presensi_pulang = presensi_pulang_time
-                            absensi.foto_pulang = f'images/{image_filename}'
                             db.session.commit()
 
-                            #  Kirim WhatsApp setelah absensi keluar dicatat
                             send_whatsapp_message(
                                 person_name,
                                 "Presensi Pulang",
@@ -2610,6 +2894,8 @@ def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
                                 role_kamera,
                                 f'images/{image_filename}'
                             )
+        cv2.putText(frame_with_boxes, f"FPS: {fps_display}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
 
         ret, buffer = cv2.imencode('.jpg', frame_with_boxes)
@@ -2619,7 +2905,9 @@ def generate_frames(index, latest_frames, frame_locks, admin_id, role_kamera):
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-time.sleep(0.05)
+        time.sleep(0.05)
+
+
 
 def check_available_cameras():
     """ Mengecek jumlah kamera yang tersedia """
@@ -2645,6 +2933,7 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
     detection_start_times = {}
     detection_in_progress = {}
     bukti_foto = {}
+    recognition_start_times = {}
 
     try:
         admin_id = int(admin_id_cookie)
@@ -2668,7 +2957,7 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
 
     config = configs[index]
 
-    # === MODEL PRESENSI ===
+    # === MODEL PRESENSI (YOLO) ===
     model = models_by_admin.get(admin_id)
     class_names = class_names_by_admin.get(admin_id, {})
 
@@ -2695,7 +2984,7 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
             print(f"❌ Gagal memuat model presensi: {e}")
             return
 
-    # === MODEL PELANGGARAN ===
+    # === MODEL PELANGGARAN (YOLO) ===
     model_pelanggaran = model_pelanggaran_by_admin.get(admin_id)
     if model_pelanggaran is None:
         try:
@@ -2712,6 +3001,11 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
             print(f"❌ Gagal memuat model pelanggaran: {e}")
             return
 
+    # === FACE RECOGNITION SETUP ===
+    if admin_id not in face_recognition_embeddings:
+        print(f"🔄 Memuat face embeddings untuk admin {admin_id}...")
+        face_recognition_embeddings[admin_id] = load_face_embeddings(admin_id)
+
     while True:
         time.sleep(0.01)
 
@@ -2724,31 +3018,65 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
         results = model(resized_frame, verbose=False)
         results_pelanggaran = model_pelanggaran(resized_frame, verbose=False)
 
-        # Update waktu saat ini
         current_time = time.time()
         current_datetime = datetime.now()
 
-        # Plot presensi dan pelanggaran
-        frame_with_boxes = custom_plot(results, set(), class_names)
-        frame_with_boxes = custom_plot(results_pelanggaran, set(), model_pelanggaran.names, frame=frame_with_boxes)
-
         detected_names = set()
+        recognized_faces = {}
 
-        # === DETEKSI ORANG UNTUK PRESENSI ===
+        # === CNN FACE RECOGNITION ===
         if results and results[0].boxes:
             for box in results[0].boxes:
                 if box.conf[0] < 0.4:
                     continue
-                cls_index = int(box.cls[0])
-                person_name = class_names.get(cls_index, "Unknown")
-                if person_name == "Unknown":
-                    continue
-                detected_names.add(person_name)
+                bbox = box.xyxy[0].cpu().numpy().astype(int)
+                x1, y1, x2, y2 = bbox
+                face_crop = resized_frame[y1:y2, x1:x2]
 
-                if not detection_in_progress.get(person_name):
-                    detection_start_times[person_name] = current_time
-                    detection_in_progress[person_name] = True
-                    bukti_foto[person_name] = frame_with_boxes.copy()
+                if face_crop.shape[0] < 50 or face_crop.shape[1] < 50:
+                    continue
+
+                face_tensor = mtcnn(Image.fromarray(cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)))
+                if face_tensor is None:
+                    continue
+
+                emb = resnet(face_tensor.unsqueeze(0)).detach().numpy()
+                best_match = "Unknown"
+                max_sim = 0.0
+
+                for name, mean_emb in face_recognition_embeddings[admin_id].items():
+                    sim = cosine_similarity(emb, mean_emb.reshape(1, -1))[0][0]
+                    if sim > max_sim:
+                        max_sim = sim
+                        best_match = name
+
+                if max_sim >= 0.7:
+                    person_name = best_match
+                    if person_name not in recognition_start_times:
+                        recognition_start_times[person_name] = current_time
+                    elif current_time - recognition_start_times[person_name] >= 5:
+                        detected_names.add(person_name)
+                else:
+                    person_name = "Unknown"
+                    if person_name in recognition_start_times:
+                        del recognition_start_times[person_name]
+
+                recognized_faces[(x1, y1, x2, y2)] = person_name
+
+                if person_name != "Unknown":
+                    if not detection_in_progress.get(person_name):
+                        detection_start_times[person_name] = current_time
+                        detection_in_progress[person_name] = True
+                        bukti_foto[person_name] = None
+
+        # === PLOT BOUNDING BOXES ===
+        frame_with_boxes = custom_plot(results, detected_names, class_names, recognized_faces)
+        frame_with_boxes = custom_plot(results_pelanggaran, set(), model_pelanggaran.names, frame=frame_with_boxes)
+
+        # === Set frame_with_boxes sebagai bukti jika belum diset ===
+        for person_name in detection_in_progress:
+            if bukti_foto.get(person_name) is None:
+                bukti_foto[person_name] = frame_with_boxes.copy()
 
         # === SIMPAN PRESENSI JIKA ORANG SUDAH TIDAK TERDETEKSI ===
         for person_name in list(detection_in_progress):
@@ -2783,12 +3111,9 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
                             os.makedirs(os.path.join('static', 'pelanggaran'), exist_ok=True)
                             filename_pelanggaran = f"{person_name}_{int(time.time())}_pelanggaran.jpg"
                             path_pelanggaran = os.path.join('static', 'pelanggaran', filename_pelanggaran)
-                            cv2.imwrite(path_pelanggaran, frame.copy())
+                            cv2.imwrite(path_pelanggaran, frame_with_boxes)
                             foto_pelanggaran = path_pelanggaran
-
-                            # ✅ Tambahkan baris ini:
                             threading.Thread(target=play_sound, daemon=True).start()
-
                             print(f"🚨 Pelanggaran terdeteksi: {class_name.upper()} oleh {person_name}")
                             break
 
@@ -2835,7 +3160,7 @@ def generate_frames_lama_kerja(index, latest_frames, frame_locks, admin_id_cooki
                 detection_start_times.pop(person_name, None)
                 bukti_foto.pop(person_name, None)
 
-        # Encode dan kirim ke client
+        # === STREAM FRAME ===
         ret, buffer = cv2.imencode('.jpg', frame_with_boxes)
         if not ret:
             continue

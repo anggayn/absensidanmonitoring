@@ -391,25 +391,20 @@
 
 
         <!-- Info Card -->
-        <div class="row mt-3">
-          <div class="col-12">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                {% if admin.model_path %}
-                <p><strong>Model Presensi (Orang):</strong> {{ admin.model_path }}</p>
-                {% else %}
-                <p class="text-muted">Belum ada model presensi yang diupload.</p>
-                {% endif %}
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        {% if admin.model_makanminum %}
+          <p><strong>Model Pelanggaran (Makan/Minum):</strong> {{ admin.model_makanminum }}</p>
+        {% else %}
+          <p class="text-muted">Belum ada model pelanggaran yang diupload.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 
-                {% if admin.model_makanminum %}
-                <p><strong>Model Pelanggaran (Makan/Minum):</strong> {{ admin.model_makanminum }}</p>
-                {% else %}
-                <p class="text-muted">Belum ada model pelanggaran yang diupload.</p>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Upload Modal -->
         <div class="modal fade" id="modal-upload" tabindex="-1" role="dialog" aria-hidden="true">
@@ -429,7 +424,6 @@
                   <div class="form-group">
                     <label for="model_type">Jenis Model</label>
                     <select name="model_type" class="form-control" required>
-                      <option value="presensi">Model Presensi (Orang)</option>
                       <option value="pelanggaran">Model Pelanggaran (Makan/Minum)</option>
                     </select>
                   </div>
@@ -466,7 +460,6 @@
           <div class="form-group">
             <label for="model_type_edit">Jenis Model</label>
             <select name="model_type" class="form-control" required>
-              <option value="presensi">Model Presensi (Orang)</option>
               <option value="pelanggaran">Model Pelanggaran (Makan/Minum)</option>
             </select>
           </div>
@@ -519,101 +512,6 @@
               </div>
               <div class="modal-body overflow-auto" style="max-height: 75vh;">
                 <div class="row g-2" id="foto-list"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="tools-section">
-          <h4 class="text-center">Tools</h4>
-          <div class="d-flex justify-content-center">
-            <div class="tool-button btn-roboflow">
-              <a href="https://roboflow.com/" target="_blank">
-                <img src="/static/images/logoroboflow.png" alt="Roboflow Icon" style="width: 30px; height: 30px;"><br>
-                Create Dataset
-              </a>
-            </div>
-            <div class="tool-button btn-colab">
-              <a href="https://colab.research.google.com/github/ultralytics/ultralytics/blob/main/examples/tutorial.ipynb"
-                target="_blank">
-                <img src="/static/images/logocolab.png" alt="Colab Icon" style="width: 40px; height: 40px;"><br>
-                Train Dataset
-              </a>
-            </div>
-          </div>
-          <p class="text-center mt-3" style="font-size: 14px; color: #666;">
-            Gunakan tombol button di atas untuk membuat dan melatih kumpulan data Anda dengan mudah.
-          </p>
-
-          <div class="row">
-            <div class="col-md-6">
-              <div class="box">
-                <h4 class="text-center mt-3">Tutorial Membuat Dataset</h4>
-                <p>Berikut adalah langkah-langkah untuk membuat dataset:</p>
-                <ol class="numbered-list">
-                  <li>klik tombol <strong>Create dataset diatas</strong>.</li>
-                  <li>Lakukan klik tombol <strong>Sign In</strong> untuk melakukan login.</li>
-                  <li>Klik tombol <strong>New Project</strong>.</li>
-                  <li>Isi inputan <strong>Project Name</strong> dan <strong>Annotation Group</strong> sesuai
-                    dengan project Anda.</li>
-                  <li>Pilih <strong>Project Type</strong>: Object Detection -> klik tombol <strong>Create
-                      Public Project</strong>.</li>
-                  <li>Pilih <strong>Upload Data</strong>: lakukan upload foto-foto staff dan mahasiswa -> klik
-                    tombol <strong>Save and Continue</strong>.</li>
-                  <li>Pilih <strong>Manual Labeling</strong> -> klik tombol <strong>Start Manual
-                      Labeling</strong> -> assign to Myself.</li>
-                  <li>Pilih <strong>Annotating</strong> -> klik tombol <strong>Start Annotating</strong>.</li>
-                  <li>Pilih <strong>Bounding Box Tool</strong> -> pilih area wajah dan lakukan labelling ->
-                    isi Annotation Editor sesuai dengan nama orangnya -> <strong>Save Enter</strong>.</li>
-                  <li>Kembali ke halaman project pilih <strong>Annotate</strong> -> klik tombol <strong>Add
-                      Image to Dataset</strong> -> pilih <strong>Method What's Train, Valid,
-                      Test?</strong> -> pilih <strong>Split Images Between Train/Valid/Test</strong> ->
-                    klik tombol <strong>Add Images</strong>.</li>
-                  <li>Pilih dataset - pilih tombol <strong>Generate Version</strong>.</li>
-                  <li>Pilih <strong>Preprocessing</strong> -> isi <strong>Resize</strong> menjadi 1024 ->
-                    <strong>Continue</strong>.
-                  </li>
-                  <li><strong>Augmentation</strong> -> <strong>Continue</strong>.</li>
-                  <li>Klik tombol <strong>Create</strong>.</li>
-                  <li>Klik tombol <strong>Download Dataset</strong> -> format YOLOv8 -> pilih <strong>Show
-                      Download Code</strong> -> <strong>Continue</strong>.</li>
-                  <li>Copy model library.</li>
-                </ol>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="box">
-                <h4 class="text-center mt-3">Tutorial Train Dataset</h4>
-                <p>Berikut adalah langkah-langkah untuk melatih dataset Anda:</p>
-                <ol>
-                  <ol class="numbered-list">
-                    <li>klik tombol Train Dataset.</li>
-                    <li>Jalankan atau run:
-                      <pre>%pip install ultralytics<br>import ultralytics<br>ultralytics.checks()</pre>
-                    </li>
-                    <li>Tambahkan code yang sudah di download dari dataset roboflow contoh:
-                      <pre># Download COCO val<br>import torch<br>torch.hub.download_url_to_file('https://ultralytics.com/assets/coco2017val.zip', 'tmp.zip')  # download (780M - 5000 images)<br>!unzip -q tmp.zip -d datasets && rm tmp.zip  # unzip<br>-> jalankan atau run</pre>
-                    </li>
-                    <li>buka folder dan pilih file <strong>data.yaml</strong>.</li>
-                    <li>ubah isi dalam data dengan salt path sesuai dengan file contoh:
-                      <pre>data: /content/coba-1/data.yaml<br>test: /content/coba-1/test.yaml<br>train: /content/coba-1/train.yaml<br>val: /content/coba-1/val.yaml<br>-> jangan lupa save</pre>
-                    </li>
-                    <li>ubah isi kode:
-                      <pre># Validate YOLO11n on COCO8 val<br>!yolo val model=yolo11n.pt data=coco8.yaml</pre>
-                      menjadi seperti di bawah ini:
-                      <pre># Validate YOLO11n on COCO8 val<br>!yolo val model=yolov8n.pt data=salin salt path data<br>-> lalu jalankan atau run -> nanti kalau sudah akan ada file YoloV8 dan YoloV11</pre>
-                    </li>
-                    <li>ubah isi kode:
-                      <pre># Train YOLO11n on COCO8 for 3 epochs<br>!yolo train model=yolo11n.pt data=coco8.yaml epochs=3 imgsz=640</pre>
-                      menjadi seperti di bawah ini:
-                      <pre># Train YOLO11n on COCO8 for 3 epochs<br>!yolo train model=yolov8n.pt data=salin salt path data epochs=semakin besar epochs semakin akurat misal 200 imgsz=1024<br>-> lalu jalankan atau run tunggu sampai selesai epochs</pre>
-                    </li>
-                    <li>buka folder <strong>runs</strong> -> <strong>detect</strong> ->
-                      <strong>train</strong> -> <strong>weights</strong> -> pilih <strong>best.pt</strong>
-                      -> download <strong>best.pt</strong>.
-                    </li>
-                  </ol>
-                </ol>
               </div>
             </div>
           </div>
@@ -699,17 +597,7 @@
           <div class="form-group">
             <label for="model_type_delete">Jenis Model</label>
             <select name="model_type" id="model_type_delete" class="form-control" required onchange="updateModelFileDelete()">
-              <option value="">-- Pilih Jenis Model --</option>
-              <option value="presensi">Presensi (Orang)</option>
               <option value="pelanggaran">Pelanggaran (Makan/Minum)</option>
-            </select>
-          </div>
-
-          <!-- Pilih nama file (diisi otomatis via JS berdasarkan pilihan di atas) -->
-          <div class="form-group">
-            <label for="model_file_name">Nama File Model</label>
-            <select name="model_file_name" id="model_file_name" class="form-control" required>
-              <option value="">-- Pilih Jenis Model Dulu --</option>
             </select>
           </div>
 

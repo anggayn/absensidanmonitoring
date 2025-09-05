@@ -31,7 +31,9 @@
   <link href="/static/dist/css/tabler.min.css" rel="stylesheet" />
   <link href="/static/dist/css/demo.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
     body {
       display: none;
@@ -100,6 +102,42 @@
       font-weight: bold;
       cursor: pointer;
     }
+     #videoElement {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    #instruction {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+     #custom-alert {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1055;
+    min-width: 300px;
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card-body h4 {
+    font-family: 'Segoe UI', 'Poppins', sans-serif;
+  }
+
+  .card-body p,
+  .card-body small {
+    font-family: 'Segoe UI', 'Poppins', sans-serif;
+  }
+
+  .card-body span.fw-bold {
+    color: #212529;
+  }
   </style>
 </head>
 
@@ -239,100 +277,122 @@
     </div>
 
 
-    <div class="content">
-      <div class="container-xl">
-        <!-- Page title -->
-        <div class="page-header">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <div class="page-pretitle">Pegawai</div>
-              <h2 class="page-title">Upload Foto Pegawai</h2>
+ <div class="content">
+   <div class="container-xl py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nama Pegawai</label>
+            <input type="text" class="form-control" id="name" placeholder="Masukkan nama pegawai" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Pilih Kamera</label>
+        <select id="cameraSelect" class="form-select">
+  <option value="webcam">Webcam (Default)</option>
+  {% for kamera in daftar_kamera %}
+  <option value="{{ kamera.ip_rtsp }}">{{ kamera.nama_kamera }} ({{ kamera.role_kamera.value }})</option>
+  {% endfor %}
+</select>
+
+          </div>
+
+          <div class="text-center mb-3">
+  <video id="videoElement" autoplay muted playsinline style="width: 100%; max-width: 480px; height: 300px; border-radius: 12px; border: 1px solid #ccc;"></video>
+  <img id="rtspImage" class="d-none" style="width: 100%; max-width: 480px; height: 300px; border-radius: 12px; border: 1px solid #ccc;" />
+</div>
+
+
+          <div id="instruction" class="text-center text-primary fw-bold fs-5 mb-2"></div>
+
+          <div class="text-center mb-3">
+            <button class="btn btn-success" id="startCapture">📸 Mulai Capture</button>
+          </div>
+
+          <div id="upload-message" class="text-center"></div>
+
+          <div id="preview-section" class="d-none">
+            <h5 class="text-center fw-bold">Preview Foto: <span id="preview-direction">-</span></h5>
+            <div id="preview-images" class="d-flex flex-wrap justify-content-center gap-2 mb-3"></div>
+
+            <div class="text-center">
+              <button class="btn btn-danger me-2" id="reset-button">❌ Batal dan Ulangi</button>
+              <button class="btn btn-primary" id="confirm-button">✅ Setujui dan Upload</button>
             </div>
           </div>
         </div>
-
-        <div class="row row-deck row-cards">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-body">
-                <form id="upload-form" enctype="multipart/form-data">
-                  <div class="mb-3">
-                    <label class="form-label">Nama Pegawai</label>
-                    <input type="text" class="form-control" name="name" required />
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Upload Foto</label>
-                    <input type="file" class="form-control" name="photos" multiple webkitdirectory directory required />
-                  </div>
-                  <button type="submit" class="btn btn-primary">Upload</button>
-                </form>
-                <div id="upload-message" class="mt-3"></div>
-              </div>
-              <div class="instruction">
-                <h4 style="text-align: center;">Masukkan nama lengkap dan unggah 30 foto wajah dari setiap posisi
-                  dengan pencahayaan yang jelas contoh dibawah ini :</h4>
-                <div class="example-images">
-                  <div class="image-container">
-                    <img src="/static/images/manca (35).jpg" alt="Contoh 1" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 1</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (65).jpg" alt="Contoh 2" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 2</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (85).jpg" alt="Contoh 3" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 3</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (104).jpg" alt="Contoh 4" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 4</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (13).jpg" alt="Contoh 5" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 5</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (25).jpg" alt="Contoh 6" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 6</p>
-                  </div>
-                  <div class="image-container">
-                    <img src="/static/images/manca (55).jpg" alt="Contoh 7" onclick="openImagePopup(this.src)">
-                    <p class="image-caption">Contoh 7</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Image Popup Modal -->
-        <div id="imagePopup" class="image-popup" onclick="closeImagePopup()">
-          <span class="close">&times;</span>
-          <img class="popup-content" id="popupImg">
-        </div>
-
       </div>
     </div>
+  </div>
 
 
-      <footer class="footer footer-transparent">
-          <div class="container">
-            <div class="row text-center align-items-center flex-row-reverse">
-              <div class="col-lg-auto ml-lg-auto">
-                <ul class="list-inline list-inline-dots mb-0">
-                  All rights reserved.
-                </ul>
-              </div>
-              <div class="col-12 col-lg-auto mt-3 mt-lg-0">
-                Copyright ©absensidanmonitoring 2025
-              </div>
-            </div>
+
+      <!-- Instruction -->
+      <div class="row justify-content-center mt-4">
+        <div class="col-md-8">
+          <div class="card border-light bg-light shadow-sm">
+         <div class="card-body text-center">
+  <h4 class="mb-3 fw-bold text-dark" style="font-size: 1.5rem;">
+    Instruksi Pengambilan Foto
+  </h4>
+  <p class="mb-2 fs-6 text-secondary">
+    • Hadapkan wajah ke <span class="fw-bold text-dark">depan</span>, <span class="fw-bold text-dark">kanan</span>, dan <span class="fw-bold text-dark">kiri</span>.
+  </p>
+  <p class="mb-2 fs-6 text-secondary">
+    • Setiap arah diambil sebanyak <span class="fw-bold text-dark">10x</span>.
+  </p>
+  <p class="text-muted small fst-italic">
+    Pastikan wajah terlihat jelas dan memiliki pencahayaan yang cukup.
+  </p>
+</div>
           </div>
-        </footer>
+        </div>
+      </div>
+    </div>
   </div>
-  </div>
+<div id="custom-alert" class="alert alert-success alert-dismissible fade show shadow fw-bold" role="alert">
+ <span id="custom-alert-message"></span>
+  <button type="button" class="btn-close" onclick="hideCustomAlert()" aria-label="Close"></button>
+</div>
+  <!-- Footer -->
+  <footer class="footer footer-transparent mt-5">
+    <div class="container">
+      <div class="row text-center align-items-center flex-row-reverse">
+        <div class="col-lg-auto ml-lg-auto">
+          <ul class="list-inline list-inline-dots mb-0">All rights reserved.</ul>
+        </div>
+        <div class="col-12 col-lg-auto mt-3 mt-lg-0">
+          Copyright ©absensidanmonitoring 2025
+        </div>
+      </div>
+    </div>
+  </footer>
 
-  <!-- Libs JS -->
+  <style>
+    #preview-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 10px;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    #preview-images img {
+      width: 100%;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      object-fit: cover;
+      transition: transform 0.2s ease;
+    }
+
+    #preview-images img:hover {
+      transform: scale(1.05);
+    }
+  </style>
+
+  <!-- JS -->
   <script src="../static/dist/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../static/dist/libs/jquery/dist/jquery.slim.min.js"></script>
   <script src="../static/dist/libs/peity/jquery.peity.min.js"></script>
@@ -340,54 +400,192 @@
   <script src="../static/dist/libs/flatpickr/dist/flatpickr.min.js"></script>
   <!-- Tabler Core -->
   <script src="../static/dist/js/tabler.min.js"></script>
-  <script>
+   <script>
     document.addEventListener("DOMContentLoaded", function () {
       flatpickr(document.getElementById('calendar-range'), {
         mode: "range"
       });
     });
   </script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const form = document.getElementById("upload-form");
-      const messageBox = document.getElementById("upload-message");
+ <script>
+const video = document.getElementById("videoElement");
+const rtspImage = document.getElementById("rtspImage");
+const canvas = document.createElement("canvas");
+const directions = ["depan", "kanan", "kiri"];
+const captureCount = 10;
 
-      form.addEventListener("submit", function (e) {
-        e.preventDefault();
-        const formData = new FormData(form);
+let stream, currentCamera, allCapturedImages = [];
 
-        fetch("/pegawai_upload", {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        })
-          .then(response => response.json())
-          .then(result => {
-            if (result.success) {
-              messageBox.innerHTML = `<div class="alert alert-success">Foto berhasil diupload!</div>`;
-              form.reset();
-            } else {
-              messageBox.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
-            }
-          })
-          .catch(error => {
-            console.error("Upload error:", error);
-            messageBox.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan saat upload.</div>`;
-          });
+async function startWebcam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+  } catch (err) {
+    alert("Gagal membuka webcam.");
+  }
+}
+
+function stopWebcam() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+}
+
+document.getElementById("cameraSelect").addEventListener("change", async function () {
+  const selected = this.value;
+  stopWebcam();
+
+  if (selected === "webcam") {
+    video.classList.remove("d-none");
+    rtspImage.classList.add("d-none");
+    await startWebcam();
+  } else {
+    video.classList.add("d-none");
+    rtspImage.classList.remove("d-none");
+    rtspImage.src = `/video_feed_rtsp?ip_rtsp=${encodeURIComponent(selected)}&t=${Date.now()}`;
+  }
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  const selected = document.getElementById("cameraSelect").value;
+  if (selected === "webcam") {
+    startWebcam();
+    video.classList.remove("d-none");
+    rtspImage.classList.add("d-none");
+  } else {
+    video.classList.add("d-none");
+    rtspImage.classList.remove("d-none");
+    rtspImage.src = `/video_feed_rtsp?ip_rtsp=${encodeURIComponent(selected)}&t=${Date.now()}`;
+  }
+});
+
+function captureImage() {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+  return canvas.toDataURL("image/jpeg");
+}
+
+async function uploadImage(image, direction, index, name, cameraType) {
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("direction", direction);
+  formData.append("index", index);
+  formData.append("image", image);
+  formData.append("camera_type", cameraType);
+
+  const res = await fetch("/upload_capture_image", {
+    method: "POST",
+    body: formData,
+    credentials: "include"
+  });
+  return await res.json();
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function capturePerDirection(direction, name) {
+  const previews = [];
+  for (let i = 0; i < captureCount; i++) {
+    let imageData;
+    if (currentCamera === "webcam") {
+      imageData = captureImage();
+    } else {
+      const res = await fetch("/capture_from_rtsp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip_rtsp: currentCamera, direction, index: i, name }),
+        credentials: "include"
       });
-    });
-  </script>
-  <script>
-    function openImagePopup(src) {
-      document.getElementById("popupImg").src = src;
-      document.getElementById("imagePopup").style.display = "block";
+      const data = await res.json();
+      imageData = data.image_url;
     }
+    previews.push({ imageData, direction, index: i });
+    await sleep(300);
+  }
+  // ✅ Tampilkan alert bahwa capture 10x untuk arah ini selesai
+  showCustomAlert(`Pengambilan foto arah "${direction}" selesai! Silakan periksa dan konfirmasi.`, 'success');
+  return previews;
+}
 
-    function closeImagePopup() {
-      document.getElementById("imagePopup").style.display = "none";
+function renderPreview(previews, direction) {
+  document.getElementById("preview-direction").innerText = direction;
+  const previewContainer = document.getElementById("preview-images");
+  previewContainer.innerHTML = "";
+  previews.forEach(p => {
+    const img = document.createElement("img");
+    img.src = p.imageData;
+    img.style.width = "80px";
+    img.style.borderRadius = "6px";
+    previewContainer.appendChild(img);
+  });
+  document.getElementById("preview-section").classList.remove("d-none");
+}
+
+async function captureSequence() {
+  const name = document.getElementById("name").value.trim();
+  if (!name) return alert("Nama pegawai harus diisi.");
+
+  currentCamera = document.getElementById("cameraSelect").value;
+  if (currentCamera === "webcam") await startWebcam();
+
+  allCapturedImages = [];
+  document.getElementById("upload-message").innerHTML = `<div class="alert alert-info">Pengambilan gambar dimulai...</div>`;
+
+  for (const dir of directions) {
+    let confirmed = false;
+    while (!confirmed) {
+      document.getElementById("instruction").innerText = `Arahkan wajah ke ${dir}`;
+      await sleep(1000);
+
+      const previews = await capturePerDirection(dir, name);
+      renderPreview(previews, dir);
+
+      confirmed = await new Promise(resolve => {
+        document.getElementById("confirm-button").onclick = () => resolve(true);
+        document.getElementById("reset-button").onclick = () => resolve(false);
+      });
+
+      if (confirmed) allCapturedImages.push(...previews);
+      else document.getElementById("preview-section").classList.add("d-none");
     }
-  </script>
+  }
 
+  if (currentCamera === "webcam") stopWebcam();
+
+  for (let img of allCapturedImages) {
+    await uploadImage(img.imageData, img.direction, img.index, name, currentCamera);
+  }
+
+  document.getElementById("upload-message").innerHTML = `<div class="alert alert-success">Gambar berhasil diupload!</div>`;
+  document.getElementById("preview-section").classList.add("d-none");
+}
+
+document.getElementById("startCapture").onclick = captureSequence;
+</script>
+
+<script>
+function showCustomAlert(message, type = 'success') {
+  const alertBox = document.getElementById("custom-alert");
+  const alertMsg = document.getElementById("custom-alert-message");
+  const icon = type === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-danger';
+
+  alertBox.className = `alert alert-${type} alert-dismissible fade show shadow fw-bold`;
+  alertMsg.innerHTML = `<i class="bi ${icon} me-2"></i>` + message;
+
+  alertBox.style.display = 'block';
+
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    hideCustomAlert();
+  }, 8000);
+}
+
+function hideCustomAlert() {
+  const alertBox = document.getElementById("custom-alert");
+  alertBox.style.display = 'none';
+}
+</script>
 
   <script>
     document.body.style.display = "block"
